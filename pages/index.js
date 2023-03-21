@@ -1,12 +1,10 @@
 import Head from "next/head";
-import Image from "next/image";
 import { useState, useCallback } from "react";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
 import BodyParams from "@/components/body-params";
 import Config from "@/components/config";
 import Response from "@/components/response";
-import styles from "@/styles/Home.module.css";
 
 const dummy = () => {
   return {
@@ -52,25 +50,9 @@ const dummy = () => {
 
 const defaultState = () => {
   return {
-    dependencies: {
-      "@codemirror-toolkit/react": "^0.3.0",
-      "@codemirror/commands": "^6.1.1",
-      "@codemirror/lang-json": "^6.0.1",
-      "@codemirror/lang-markdown": "^6.0.1",
-      "@codemirror/language-data": "^6.1.0",
-      "@codemirror/state": "^6.1.2",
-      "@codemirror/theme-one-dark": "^6.1.0",
-      "@codemirror/view": "^6.3.0",
-      axios: "^1.3.4",
-      codemirror: "^6.0.1",
-      daisyui: "^2.51.3",
-      joi: "^17.8.3",
-      next: "12.3.1",
-      react: "18.2.0",
-      "react-dom": "18.2.0",
-      "react-icons": "^4.4.0",
-      "react-syntax-highlighter": "^15.5.0",
-      "remark-gfm": "^3.0.1",
+    type: "object",
+    properties: {
+      prop: { type: "array" },
     },
   };
 };
@@ -78,26 +60,40 @@ const defaultState = () => {
 export default function Home() {
   const [inputAddress, setInputAddress] = useState();
   const [params, setParams] = useState();
-  const [config, setDoc] = useState(defaultState);
-  const [response, setResponse] = useState(dummy);
+  const [doc, setDoc] = useState(defaultState);
+  const [config, setConfig] = useState(defaultState);
+  const [response, setResponse] = useState();
   const [type, setType] = useState("get");
-  const [error, setError] = useState(null);
+
   const handleDocChange = useCallback((newDoc) => {
-    setDoc(newDoc);
+    // const val = JSON.parse(
+    //   JSON.stringify(newDoc).replace(`\n`, "").replace(`\"`, '"')
+    // );
+    const val = JSON.parse(JSON.stringify(newDoc));
+    console.log(val);
+    console.log(val.type);
+    setConfig(val);
   }, []);
+
   const handleParamsChange = useCallback((d) => {
     setParams(d);
   }, []);
+
   const handleSelectChange = (e) => {
     setType(e.target.value);
+    // reset response
     setResponse();
   };
+
   const onHandleInputAddress = (e) => {
     setInputAddress(e.target.value);
   };
 
   const submitAPI = async () => {
     try {
+      const Ajv = require("ajv");
+      const ajv = new Ajv({ allErrors: true });
+
       let val = null;
       if (type === "get") {
         val = axios.get(inputAddress);
@@ -111,7 +107,21 @@ export default function Home() {
       await val
         .then((response) => {
           setResponse(response.data);
-          // setError(null);
+          // validate data
+          const validate = ajv.compile(JSON.parse(config));
+          const valid = validate(response.data);
+          if (valid) {
+            toast.success(<p>data is valid</p>);
+          } else {
+            console.log(validate.errors);
+            validate.errors.map((i) =>
+              toast.error(
+                <p>
+                  props: {i.instancePath}, {i.message}
+                </p>
+              )
+            );
+          }
         })
         .catch((e) => {
           toast.error(<p>{e.message}</p>);
@@ -161,8 +171,7 @@ export default function Home() {
           </div>
         )}
         <div className="flex w-full gap-4 mt-10">
-          {/* <h2 className="text-xl font-semibold">Response</h2> */}
-          <Config config={config} onChange={handleDocChange} />
+          <Config initialDoc={doc} onChange={handleDocChange} />
           <Response data={response} />
         </div>
       </main>

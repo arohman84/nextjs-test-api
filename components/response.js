@@ -5,8 +5,6 @@ import { json, jsonLanguage } from "@codemirror/lang-json";
 import { languages } from "@codemirror/language-data";
 
 function Response(data) {
-  console.log(data);
-
   const beautify = require("js-beautify").js;
 
   const [resp, setResp] = useState("");
